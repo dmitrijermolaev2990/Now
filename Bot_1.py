@@ -17,7 +17,7 @@ def main():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
 
-    # Начинаем поиск обнов
+    # Начинаем поиск обновления 111
     application.run_polling()
 if __name__ == '__main__':
     main()
