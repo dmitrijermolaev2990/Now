@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 
 # Указываем номер билда вручную
-BUILD_NUMBER = VANEK  # Поменяйте этот номер вручную при каждом новом билде
+BUILD_NUMBER = 5  # Поменяйте этот номер вручную при каждом новом билде
 
 
 # Функция для обработки команды /start
