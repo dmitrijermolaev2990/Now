@@ -2,13 +2,13 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 
 # Указываем номер билда вручную
-BUILD_NUMBER = 3  # Поменяйте этот номер вручную при каждом новом билде
+BUILD_NUMBER = 10  # Поменяйте этот номер вручную при каждом новом билде
 
 
 # Функция для обработки команды /start
 async def start(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(
-        f'Привет! Я бот, отправь мне что-нибудь, и я верну это обратно! (Build {BUILD_NUMBER})')
+        f'Привет! Я Ванек! (Build {BUILD_NUMBER})')
 
 
 # Функция эхо: повторяет полученное сообщение и добавляет номер билда
@@ -38,3 +38,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
