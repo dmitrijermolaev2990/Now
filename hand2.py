@@ -23,7 +23,7 @@ def filter_contours(contours, min_length=50):
     return filtered
 
 # Путь к изображению
-image_path = "/Users/dmitrij/Desktop/1/hand2.jpg"
+image_path = "/Users/dmitrij/Desktop/1/hand.jpg"
 image = cv2.imread(image_path)
 
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)

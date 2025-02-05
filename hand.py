@@ -4,7 +4,7 @@ import os
 
 # Путь к изображению
 excel_path = '/Users/dmitrij/Desktop/1/'
-image_path = os.path.join(excel_path, 'hand2.jpg')  # Подставь свое имя файла
+image_path = os.path.join(excel_path, 'hand.jpg')  # Подставь свое имя файла
 
 # Загрузка изображения
 image = cv2.imread(image_path)
