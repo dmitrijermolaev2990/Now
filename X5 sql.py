@@ -24,10 +24,20 @@ def map_dtype(dtype):
 
 def fetch_data(db_url, table_name, period_column, start_year, end_year):
     engine = create_engine(db_url)
-    query = f"""
-        SELECT * FROM {table_name}
-        WHERE EXTRACT(YEAR FROM {period_column}) BETWEEN {start_year} AND {end_year}
-    """
+
+    # Добавляем фильтрацию только для таблицы payment_transaction
+    if table_name == 'payment_transaction':
+        query = f"""
+            SELECT * FROM {table_name}
+            WHERE EXTRACT(YEAR FROM {period_column}) BETWEEN {start_year} AND {end_year}
+            AND (id <= 2147483647 AND amount <= 2147483647)
+        """
+    else:
+        query = f"""
+            SELECT * FROM {table_name}
+            WHERE EXTRACT(YEAR FROM {period_column}) BETWEEN {start_year} AND {end_year}
+        """
+
     print(f"Извлекаем данные из {table_name} for the period {start_year}-{end_year} using {period_column}...")
     return pd.read_sql(text(query), engine)
 
@@ -39,8 +49,11 @@ def create_table(engine, table_name, df):
 
 
 def insert_data(engine, table_name, df):
-    df.to_sql(table_name, con=engine, if_exists='append', index=False)
-    print(f"Данные вставлены {table_name}.")
+    try:
+        df.to_sql(table_name, con=engine, if_exists='append', index=False)
+        print(f"Данные вставлены {table_name}.")
+    except Exception as e:
+        print(f"Ошибка при вставке в таблицу {table_name}: {e}")
 
 
 def main():
