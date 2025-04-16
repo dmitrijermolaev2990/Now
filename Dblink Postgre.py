@@ -1,98 +1,74 @@
+from typing import List, Dict, Any, Optional
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from typing import List, Dict, Any, Optional
 
 
 class DBLink:
     def __init__(self, conn_string: str):
-        """
-        Инициализация подключения к удаленной базе данных.
+        """Инициализация подключения к базе данных."""
+        self.conn = psycopg2.connect(conn_string)
+        self.cursor = self.conn.cursor(cursor_factory=RealDictCursor)
 
-        Args:
-            conn_string (str): Строка подключения к базе данных в формате
-                              'dbname=prod_x5_adapter user=d.ermolaev_1 password=mwWXln0I5-dCKVeKYSf host=prod-svc-db1.msk.ventrago.dev port=5432'
-        """
-        self.conn_string = conn_string
-        self.conn = None
-        self.cursor = None
+    def execute_query(self, query: str, params: Optional[tuple] = None) -> List[Dict[str, Any]]:
+        """Выполнение SQL-запроса и возврат результата в виде списка словарей."""
+        self.cursor.execute(query, params)
+        data = self.cursor.fetchall()
+        print(f"Результат запроса: {query} -> {data}")
+        return data
 
-    def connect(self) -> None:
-        """Устанавливает соединение с базой данных."""
-        try:
-            self.conn = psycopg2.connect(self.conn_string)
-            self.cursor = self.conn.cursor(cursor_factory=RealDictCursor)
-        except psycopg2.Error as e:
-            raise Exception(f"Ошибка подключения к базе данных: {e}")
-
-    def execute_query(self, query: str, params: tuple = None) -> List[Dict[str, Any]]:
-        """
-        Выполняет SQL-запрос на удаленной базе данных и возвращает результаты.
-
-        Args:
-            query (str): SQL-запрос для выполнения.
-            params (tuple, optional): Параметры для безопасного выполнения запроса.
-
-        Returns:
-            List[Dict[str, Any]]: Список словарей с результатами запроса.
-        """
-        if not self.conn or self.conn.closed:
-            self.connect()
-
-        try:
-            if params:
-                self.cursor.execute(query, params)
-            else:
-                self.cursor.execute(query)
-            # Проверяем, возвращает ли запрос данные
-            if self.cursor.description:
-                return self.cursor.fetchall()
-            return []
-        except psycopg2.Error as e:
-            raise Exception(f"Ошибка выполнения запроса: {e}")
-
-    def close(self) -> None:
-        """Закрывает соединение и курсор."""
-        if self.cursor:
-            self.cursor.close()
-        if self.conn:
-            self.conn.close()
+    def close(self):
+        """Закрытие курсора и соединения."""
+        self.cursor.close()
+        self.conn.close()
 
 
-def dblink_query(conn_string: str, query: str, params: tuple = None) -> List[Dict[str, Any]]:
-    """
-    Упрощенный интерфейс для выполнения запроса, аналогичный dblink.
-
-    Args:
-        conn_string (str): Строка подключения к удаленной базе данных.
-        query (str): SQL-запрос для выполнения.
-        params (tuple, optional): Параметры для запроса.
-
-    Returns:
-        List[Dict[str, Any]]: Результаты запроса в виде списка словарей.
-    """
+def fetch_data(conn_string: str, query: str, params: tuple = None) -> List[Dict[str, Any]]:
+    """Получает данные из базы."""
     db_link = DBLink(conn_string)
     try:
-        results = db_link.execute_query(query, params)
-        return results
+        return db_link.execute_query(query, params)
     finally:
         db_link.close()
 
 
+def join_data(local_conn_string: str, remote_conn_string: str, local_query: str, remote_query: str, join_key: str) -> List[Dict[str, Any]]:
+    """
+    Выполняет JOIN между данными из локальной и удаленной баз в памяти.
+    """
+    local_data = fetch_data(local_conn_string, local_query)
+    remote_data = fetch_data(remote_conn_string, remote_query)
+
+    result = []
+    for local_row in local_data:
+        for remote_row in remote_data:
+            if str(local_row[join_key]).strip() == str(remote_row[join_key]).strip():
+                combined_row = {**local_row, **remote_row}
+                result.append(combined_row)
+
+    return result
+
+
 # Пример использования
 if __name__ == "__main__":
-    # Пример строки подключения
-    remote_conn_string = "dbname=postgres user=postgres password=dmitrij host=localhost port=5432"
+    local_conn_string = "dbname=postgres user=postgres password=dmitrij host=localhost port=5432"
+    remote_conn_string = "dbname=prod_x5_adapter user=d.ermolaev_1 password=mwWXln0I5-dCKVeKYSfQ host=prod-svc-db1.msk.ventrago.dev port=5432"
 
-    # Пример запроса
-    query = "SELECT* FROM payment_transaction WHERE executor_work_activity_id =396090172"
-    params = (25,)
+    local_query = "SELECT * FROM agreement_vacancies WHERE x5_id = 103769421"
+    remote_query = "SELECT id AS x5_id FROM x5_tasks WHERE id = 103769421"
+    join_key = "x5_id"
 
     try:
-        # Выполняем запрос
-        results = dblink_query(remote_conn_string, query, params)
+        results = join_data(
+            local_conn_string,
+            remote_conn_string,
+            local_query,
+            remote_query,
+            join_key
+        )
 
-        # Выводим результаты
+        print("\nОбъединённые строки:")
         for row in results:
             print(row)
+
     except Exception as e:
-        print(f"Ошибка: {e}")
+        print(f"Произошла ошибка: {e}")
