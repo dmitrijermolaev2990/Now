@@ -22,11 +22,12 @@ def map_dtype(dtype):
         return String()
 
 
-def fetch_data(db_url, table_name, period_column, start_year, end_year):
+def fetch_data(db_url, table_name, period_column=None, start_year=None, end_year=None, full_load=False):
     engine = create_engine(db_url)
 
-    # Добавляем фильтрацию только для таблицы payment_transaction
-    if table_name == 'payment_transaction':
+    if full_load:
+        query = f"SELECT * FROM {table_name}"
+    elif table_name == 'payment_transaction':
         query = f"""
             SELECT * FROM {table_name}
             WHERE EXTRACT(YEAR FROM {period_column}) BETWEEN {start_year} AND {end_year}
@@ -38,7 +39,7 @@ def fetch_data(db_url, table_name, period_column, start_year, end_year):
             WHERE EXTRACT(YEAR FROM {period_column}) BETWEEN {start_year} AND {end_year}
         """
 
-    print(f"Извлекаем данные из {table_name} for the period {start_year}-{end_year} using {period_column}...")
+    print(f"Извлекаем данные из {table_name} с {'фильтрацией по годам' if not full_load else 'полной загрузкой'}...")
     return pd.read_sql(text(query), engine)
 
 
@@ -51,7 +52,7 @@ def create_table(engine, table_name, df):
 def insert_data(engine, table_name, df):
     try:
         df.to_sql(table_name, con=engine, if_exists='append', index=False)
-        print(f"Данные вставлены {table_name}.")
+        print(f"Данные вставлены в {table_name}.")
     except Exception as e:
         print(f"Ошибка при вставке в таблицу {table_name}: {e}")
 
@@ -62,26 +63,32 @@ def main():
     local_db_url = config['local_db']['url']
     local_engine = create_engine(local_db_url)
 
-    # Обработка всех внешних БД
     for db_key, db_config in config['databases'].items():
         db_url = db_config['url']
         for table_config in db_config.get('tables', []):
             table_name = table_config['name']
-            # поддержка разных названий поля
+            full_load = table_config.get('full_load', False)
             period_column = table_config.get('created_on') or table_config.get('created_at')
-            start_year = table_config['start_year']
-            end_year = table_config['end_year']
+            start_year = table_config.get('start_year')
+            end_year = table_config.get('end_year')
 
-            print(f"Processing table {table_name} with period column {period_column}")
-            data = fetch_data(db_url, table_name, period_column, start_year, end_year)
+            print(f"\nОбработка таблицы: {table_name}")
+            data = fetch_data(
+                db_url,
+                table_name,
+                period_column=period_column,
+                start_year=start_year,
+                end_year=end_year,
+                full_load=full_load
+            )
 
             if not data.empty:
                 create_table(local_engine, table_name, data)
                 insert_data(local_engine, table_name, data)
             else:
-                print(f"No data found for {table_name} in {start_year}-{end_year}.")
+                print(f"Нет данных для таблицы {table_name}.")
 
-    print("Успех.")
+    print("\nЗагрузка завершена успешно.")
 
 
 if __name__ == '__main__':
